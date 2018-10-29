@@ -8,8 +8,9 @@ AUTHOR = "Krushi Raj Tula <krushiraj123@gmail.com>"
 
 
 def write_to_file(date_time):
-	with open('contribution.txt', 'r+') as file:
+	with open('contribution.txt', 'w+') as file:
 		lines = file.readlines()
+		file.truncate()
 		lines.append(AUTHOR + ' wrote a line on ' + date_time)
 		file.writelines(lines[-100:])
 
@@ -21,11 +22,7 @@ while(count < COUNT):
 	command = 'git add -A'
 	os.system(command)
 	CURR_TIME = current_date_time.split()[-1].split('.')[0]
-	command = 'set GIT_AUTHOR_DATE="' + DATE + ' ' + CURR_TIME + '"'
-	os.system(command)
-	command = 'set GIT_COMMITTER_DATE="' + DATE + ' ' + CURR_TIME + '"'
-	os.system(command)
-	command = 'git commit -m "commiting to past at ' + current_date_time + '" --author "' + AUTHOR + '"'
+	command = 'git commit --date "' + DATE + ' ' + CURR_TIME + '" -m "commiting to past at ' + current_date_time + '" --author "' + AUTHOR + '"'
 	os.system(command)
 	command = 'git push'
 	os.system(command)
