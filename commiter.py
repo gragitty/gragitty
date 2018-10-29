@@ -2,15 +2,16 @@ import os
 import sys
 from datetime import datetime
 
-COUNT = 2
+COUNT = 11
 DATE = "2018-10-30"
 AUTHOR = "Krushi Raj Tula <krushiraj123@gmail.com>"
 
 
 def write_to_file(date_time):
-	with open('contribution.txt', 'w+') as file:
+	with open('contribution.txt', 'r') as file:
 		lines = file.readlines()
-		file.truncate()
+
+	with open('contribution.text', 'w') as file:
 		lines.append(AUTHOR + ' wrote a line on ' + date_time)
 		file.writelines(lines[-100:])
 
