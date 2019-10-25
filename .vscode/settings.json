@@ -1,0 +1,4 @@
+{
+  "eslint.enable": false,
+  "python.linting.enabled": true
+}
