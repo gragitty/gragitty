@@ -90,21 +90,21 @@ def get_author_from_id(userId, connection):
 def arrange_tasks(db_tasks, connection):
 	tasks = []
 	for db_task in db_tasks:
-		tasks.append(dict(zip(
+		tasks.append((dict(zip(
 			('MESSAGE', 'TYPE', 'DATE', 'COUNT', 'AUTHOR'),
 			(
 				db_task[0], db_task[1], db_task[2],
 				COLOR_TO_COUNT_MAP[db_task[3]],
 				get_author_from_id(db_task[4], connection)
 			)
-		)))
+		)), db_task[5]))
 	return tasks
 
 def run_tasks_query(connection):
 	cursor = connection.cursor()
 	query = '''
 	select
-		message, type, date, color, "userId"
+		message, type, date, color, "userId", id
 	from tasks where completed = FALSE and date <= '{0}';
 	'''.format(str(datetime.today().date()))
 	cursor.execute(query)
@@ -112,12 +112,24 @@ def run_tasks_query(connection):
 	cursor.close()
 	return arrange_tasks(db_tasks, connection)
 
-def get_todays_tasks():
-	connection = connect_to_db()
+
+def get_todays_tasks(connection):
 	return run_tasks_query(connection)
+
+def mark_task_completed(connection, ID):
+	cursor = connection.cursor()
+	query = '''
+	update tasks
+	set completed=TRUE
+	where id = '{0}';
+	'''.format(ID)
+	cursor.execute(query)
+	cursor.close()
 
 if __name__ == '__main__':
 	load_dotenv(find_dotenv())
-	tasks = get_todays_tasks()
-	for task in tasks:
+	connection = connect_to_db()
+	tasks = get_todays_tasks(connection)
+	for task, ID in tasks:
 		commit_stub(**task)
+		mark_task_completed(connection, ID)
