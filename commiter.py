@@ -1,23 +1,32 @@
 import os
-import sys
+import requests
+import re
+import psycopg2
+from dotenv import load_dotenv, find_dotenv
 from datetime import datetime
 
-AUTHOR = "Krushi Raj Tula <krushiraj123@gmail.com>"
+COLOR_TO_COUNT_MAP = {
+	'EMPTY': 0,
+	'GREEN1': 1,
+	'GREEN2': 5,
+	'GREEN3': 10,
+	'GREEN4': 15
+}
 
-def write_to_file(date_time):
+def write_to_file(date_time, AUTHOR):
 	with open('contribution.txt', 'r') as file:
 		lines = file.readlines()
 
-	with open('contribution.text', 'w') as file:
+	with open('contribution.txt', 'w') as file:
 		lines.append(AUTHOR + ' wrote a line on ' + date_time)
 		file.writelines(lines[-100:])
 
 
-def commit_stub(COUNT=0, DATE=''):
+def commit_stub(COUNT=0, DATE='', AUTHOR='', MESSAGE='', TYPE=''):
 	count = 0
 	while(count < COUNT):
 		current_date_time = datetime.now().__str__()
-		write_to_file(current_date_time)
+		write_to_file(current_date_time, AUTHOR)
 		command = 'git add -A'
 		os.system(command)
 		CURR_TIME = current_date_time.split()[-1].split('.')[0]
@@ -27,53 +36,88 @@ def commit_stub(COUNT=0, DATE=''):
 		os.system(command)
 		count += 1
 
+def get_request_body():
+	body = {
+		'clientID': os.environ['GITHUB_CLIENT_ID'],
+		'clientSecret': os.environ['GITHUB_CLIENT_SECRET'],
+		'username': os.environ['AUTH_USERNAME']
+	}
+	return body
 
-configs = [
-	{'DATE': '2018-10-29', 'COUNT': 15},
+def get_db_url():
+	req_url = os.environ['REQUEST_URL']
+	body = get_request_body()
+	db_url = requests.get(
+		req_url,
+		json=body
+	).content.decode('ascii')
+	return db_url
 
-	{'DATE': '2018-11-04', 'COUNT': 15},
-	{'DATE': '2018-11-05', 'COUNT': 10},
-	{'DATE': '2018-11-06', 'COUNT': 5},
-	{'DATE': '2018-11-07', 'COUNT': 15},
+def parse_url_to_credentials():
+	credentials = re.compile(
+		r'postgres://(\w+):(\w+)@([0-9\.\-a-z/]+):(\d+)/(\w+)'
+	).search(get_db_url()).groups()
+	return credentials
 
-	{'DATE': '2018-11-11', 'COUNT': 15},
-	{'DATE': '2018-11-12', 'COUNT': 10},
-	{'DATE': '2018-11-13', 'COUNT': 5},
-	{'DATE': '2018-11-14', 'COUNT': 1},
-	{'DATE': '2018-11-15', 'COUNT': 15},
+def get_db_credentials():
+	db_credentials = dict(
+		zip(
+			('user', 'password', 'host', 'port', 'database'),
+			parse_url_to_credentials()
+		)
+	)
+	return db_credentials
 
-	{'DATE': '2018-11-19', 'COUNT': 15},
-	{'DATE': '2018-11-20', 'COUNT': 5},
-	{'DATE': '2018-11-21', 'COUNT': 1},
-	{'DATE': '2018-11-22', 'COUNT': 5},
-	{'DATE': '2018-11-23', 'COUNT': 15},
+def connect_to_db():
+	connection = None
+	try:
+		connection = psycopg2.connect(**get_db_credentials())
+	except Exception as e:
+		print(e)
+	return connection
 
-	{'DATE': '2018-11-27', 'COUNT': 15},
-	{'DATE': '2018-11-28', 'COUNT': 1},
-	{'DATE': '2018-11-29', 'COUNT': 5},
-	{'DATE': '2018-11-30', 'COUNT': 10},
-	{'DATE': '2018-12-01', 'COUNT': 15},
+def get_author_from_id(userId, connection):
+	cursor = connection.cursor()
+	query = '''
+	select name, email from users
+	where id='{0}';
+	'''.format(userId)
+	cursor.execute(query)
+	user = cursor.fetchone()
+	cursor.close()
+	return '{0} <{1}>'.format(*user)
 
-	{'DATE': '2018-12-03', 'COUNT': 15},
-	{'DATE': '2018-12-04', 'COUNT': 5},
-	{'DATE': '2018-12-05', 'COUNT': 1},
-	{'DATE': '2018-12-06', 'COUNT': 5},
-	{'DATE': '2018-12-07', 'COUNT': 15},
+def arrange_tasks(db_tasks, connection):
+	tasks = []
+	for db_task in db_tasks:
+		tasks.append(dict(zip(
+			('MESSAGE', 'TYPE', 'DATE', 'COUNT', 'AUTHOR'),
+			(
+				db_task[0], db_task[1], db_task[2],
+				COLOR_TO_COUNT_MAP[db_task[3]],
+				get_author_from_id(db_task[4], connection)
+			)
+		)))
+	return tasks
 
-	{'DATE': '2018-12-09', 'COUNT': 15},
-	{'DATE': '2018-12-10', 'COUNT': 10},
-	{'DATE': '2018-12-11', 'COUNT': 5},
-	{'DATE': '2018-12-12', 'COUNT': 1},
-	{'DATE': '2018-12-13', 'COUNT': 15},
+def run_tasks_query(connection):
+	cursor = connection.cursor()
+	query = '''
+	select
+		message, type, date, color, "userId"
+	from tasks where completed = FALSE and date <= '{0}';
+	'''.format(str(datetime.today().date()))
+	cursor.execute(query)
+	db_tasks = cursor.fetchall()
+	cursor.close()
+	return arrange_tasks(db_tasks, connection)
 
-	{'DATE': '2018-12-16', 'COUNT': 15},
-	{'DATE': '2018-12-17', 'COUNT': 10},
-	{'DATE': '2018-12-18', 'COUNT': 5},
-	{'DATE': '2018-12-19', 'COUNT': 15},
+def get_todays_tasks():
+	connection = connect_to_db()
+	return run_tasks_query(connection)
 
-	{'DATE': '2018-12-24', 'COUNT': 15},
-	{'DATE': '2018-12-25', 'COUNT': 15}
-]
-
-for config in configs:
-	commit_stub(**config)
+if __name__ == '__main__':
+	load_dotenv(find_dotenv())
+	tasks = get_todays_tasks()
+	for task in tasks:
+		commit_stub(**task)
