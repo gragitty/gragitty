@@ -123,6 +123,7 @@ def mark_task_completed(connection, ID):
 	set completed=TRUE
 	where id = '{0}';
 	'''.format(ID)
+	connection.commit()
 	cursor.execute(query)
 	cursor.close()
 
