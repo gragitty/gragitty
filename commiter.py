@@ -18,7 +18,7 @@ def write_to_file(date_time, AUTHOR):
 		lines = file.readlines()
 
 	with open('contribution.txt', 'w') as file:
-		lines.append(AUTHOR + ' wrote a line on ' + date_time)
+		lines.append(AUTHOR + ' wrote a line on ' + date_time + '\n')
 		file.writelines(lines[-100:])
 
 
