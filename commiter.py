@@ -127,9 +127,14 @@ def mark_task_completed(connection, ID):
 	cursor.close()
 
 if __name__ == '__main__':
-	load_dotenv(find_dotenv())
-	connection = connect_to_db()
-	tasks = get_todays_tasks(connection)
-	for task, ID in tasks:
-		commit_stub(**task)
-		mark_task_completed(connection, ID)
+	try:
+		load_dotenv(find_dotenv())
+		connection = connect_to_db()
+		tasks = get_todays_tasks(connection)
+		for task, ID in tasks:
+			commit_stub(**task)
+			mark_task_completed(connection, ID)
+	except Exception as e:
+		print(e)
+	finally:
+		connection.close()
