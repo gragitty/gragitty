@@ -135,6 +135,8 @@ if __name__ == '__main__':
 		for task, ID in tasks:
 			commit_stub(**task)
 			mark_task_completed(connection, ID)
+		else:
+			print('No tasks scheduled for the day')
 	except Exception as e:
 		print(e)
 	finally:
