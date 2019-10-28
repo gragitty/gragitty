@@ -25,6 +25,7 @@ def write_to_file(date_time, AUTHOR):
 def commit_stub(COUNT=0, DATE='', AUTHOR='', MESSAGE='', TYPE=''):
 	count = 0
 	while(count < COUNT):
+		os.system('git pull')
 		current_date_time = datetime.now().__str__()
 		write_to_file(current_date_time, AUTHOR)
 		command = 'git add -A'
